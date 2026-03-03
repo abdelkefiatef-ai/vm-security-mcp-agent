@@ -308,7 +308,16 @@ async function handleSummary() {
 // ============================================================================
 
 async function handleAnalyzeRisks(params: { vmId: string; model?: string }) {
-  const { vmId, model = 'llama-3.3-70b' } = params;
+  const { vmId, model = 'llama-3.3-70b-versatile' } = params;
+  
+  // Check for API key first
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: 'GROQ_API_KEY not configured. Please add GROQ_API_KEY environment variable in Vercel Dashboard.' },
+      { status: 500 }
+    );
+  }
   
   if (!vmId) {
     return NextResponse.json(
@@ -344,7 +353,16 @@ async function handleAnalyzeRisks(params: { vmId: string; model?: string }) {
 }
 
 async function handleGenerateReport(params: { vmId: string; model?: string }) {
-  const { vmId, model = 'llama-3.3-70b' } = params;
+  const { vmId, model = 'llama-3.3-70b-versatile' } = params;
+  
+  // Check for API key first
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: 'GROQ_API_KEY not configured. Please add GROQ_API_KEY environment variable in Vercel Dashboard.' },
+      { status: 500 }
+    );
+  }
   
   if (!vmId) {
     return NextResponse.json(
@@ -374,7 +392,16 @@ async function handleGenerateReport(params: { vmId: string; model?: string }) {
 }
 
 async function handleBatchAnalyze(params: { vmIds: string[]; model?: string }) {
-  const { vmIds, model = 'llama-3.3-70b' } = params;
+  const { vmIds, model = 'llama-3.3-70b-versatile' } = params;
+  
+  // Check for API key first
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: 'GROQ_API_KEY not configured. Please add GROQ_API_KEY environment variable in Vercel Dashboard.' },
+      { status: 500 }
+    );
+  }
   
   if (!vmIds || !Array.isArray(vmIds) || vmIds.length === 0) {
     return NextResponse.json(
