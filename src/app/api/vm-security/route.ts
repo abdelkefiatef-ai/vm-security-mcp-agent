@@ -370,8 +370,21 @@ async function handleGenerateReport(params: { vmId: string; model?: string }) {
     });
   } catch (error) {
     console.error('Report generation error:', error);
+    
+    // Check if it's an API key error
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    if (errorMessage.includes('API') || errorMessage.includes('key') || errorMessage.includes('provider')) {
+      return NextResponse.json(
+        { 
+          error: 'LLM API key not configured. Please add one of these environment variables in Vercel Dashboard → Settings → Environment Variables:\n\n• LLM_API_KEY (for OpenAI-compatible APIs)\n• OPENAI_API_KEY (for OpenAI)\n• ANTHROPIC_API_KEY (for Claude)\n\nThen redeploy the project.' 
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { error: `Analysis failed: ${errorMessage}` },
       { status: 500 }
     );
   }
