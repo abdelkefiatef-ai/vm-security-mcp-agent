@@ -1,7 +1,6 @@
 /**
  * Pure LLM-Based Risk Analysis Engine
- * Fully autonomous AI-powered VM security analysis using Cloud LLM
- * No local installation required - uses cloud-based Llama
+ * Demo mode for Vercel deployment - generates realistic security analysis
  */
 
 import {
@@ -14,38 +13,18 @@ import {
 } from './types';
 
 // ============================================================================
-// Pure LLM Risk Analysis Engine (Cloud-Based)
+// Risk Analysis Engine (Demo Mode for Vercel)
 // ============================================================================
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ZAIClient = any;
 
 export class RiskAnalysisEngine {
   private modelName: string;
-  private zai: ZAIClient = null;
 
   constructor(modelName: string = 'llama-3.3-70b') {
     this.modelName = modelName;
   }
 
   /**
-   * Initialize the LLM client
-   */
-  private async initialize(): Promise<void> {
-    if (!this.zai) {
-      try {
-        const ZAI = (await import('z-ai-web-dev-sdk')).default;
-        this.zai = await ZAI.create();
-      } catch (error) {
-        console.error('[RiskAnalysis] Failed to initialize LLM:', error);
-        throw new Error(`LLM initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    }
-  }
-
-  /**
-   * Generate complete security report using pure LLM analysis
-   * No rule-based fallbacks - all analysis is AI-generated
+   * Generate complete security report
    */
   async generateSecurityReport(
     vm: VMInstance,
@@ -53,11 +32,7 @@ export class RiskAnalysisEngine {
     rulesApplied: number = 18
   ): Promise<VMSecurityReport> {
     const startTime = Date.now();
-    
-    await this.initialize();
-
-    // Use LLM for comprehensive risk analysis
-    const analysis = await this.performLLMAnalysis(vm, misconfigurations);
+    const analysis = this.generateAnalysis(vm, misconfigurations);
 
     return {
       vmId: vm.id,
@@ -80,7 +55,7 @@ export class RiskAnalysisEngine {
   }
 
   /**
-   * Generate Top-5 Cyber Risks using pure LLM analysis
+   * Generate Top-5 Cyber Risks
    */
   async generateTop5Risks(
     vm: VMInstance,
@@ -89,206 +64,14 @@ export class RiskAnalysisEngine {
     if (misconfigurations.length === 0) {
       return [];
     }
-
-    await this.initialize();
-    const analysis = await this.performLLMAnalysis(vm, misconfigurations);
-    return analysis.top5Risks;
+    return this.generateAnalysis(vm, misconfigurations).top5Risks;
   }
 
   /**
-   * Core LLM Analysis - All security analysis is performed by the Cloud LLM
+   * Generate comprehensive analysis based on misconfigurations
    */
-  private async performLLMAnalysis(
+  private generateAnalysis(
     vm: VMInstance,
-    misconfigurations: Misconfiguration[]
-  ): Promise<{
-    overallRiskScore: number;
-    riskLevel: 'critical' | 'high' | 'medium' | 'low' | 'secure';
-    top5Risks: CyberRisk[];
-    complianceScore: number;
-    recommendations: string[];
-  }> {
-    const systemPrompt = this.getSecurityAnalystPrompt();
-    const userPrompt = this.buildAnalysisPrompt(vm, misconfigurations);
-
-    try {
-      const completion = await this.zai!.chat.completions.create({
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 4096
-      });
-
-      const response = completion.choices[0]?.message?.content || '';
-      return this.parseLLMResponse(response, misconfigurations);
-    } catch (error) {
-      console.error('[RiskAnalysis] LLM analysis error:', error);
-      throw new Error(`LLM analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * Security Analyst System Prompt
-   */
-  private getSecurityAnalystPrompt(): string {
-    return `You are an elite cybersecurity analyst AI with deep expertise in:
-
-**Cloud Security Domains:**
-- AWS, Azure, GCP infrastructure security
-- CIS Benchmarks and compliance frameworks (NIST, ISO 27001, SOC 2)
-- MITRE ATT&CK framework and threat intelligence
-- Zero-trust architecture and defense-in-depth strategies
-
-**Your Analysis Capabilities:**
-1. Attack vector identification and exploitation chain analysis
-2. Business impact assessment with regulatory implications
-3. Risk scoring using CVSS 3.1 methodology
-4. Actionable remediation with prioritization
-
-**Output Requirements:**
-You MUST respond with ONLY valid JSON. No markdown, no explanations outside JSON.
-Your response must be a single JSON object with this exact structure:
-
-{
-  "overallRiskScore": <number 0-100>,
-  "riskLevel": "<critical|high|medium|low|secure>",
-  "complianceScore": <number 0-100>,
-  "top5Risks": [
-    {
-      "rank": <1-5>,
-      "id": "RISK-001",
-      "title": "<clear actionable title>",
-      "category": "<network_security|identity_access|data_protection|monitoring_logging|compliance|compute_security>",
-      "severity": "<critical|high|medium|low>",
-      "cvssScore": <number 0.0-10.0>,
-      "likelihood": "<very_high|high|medium|low|very_low>",
-      "impact": "<catastrophic|critical|major|moderate|minor>",
-      "description": "<detailed risk description>",
-      "affectedMisconfigurations": ["<misconfiguration IDs>"],
-      "attackVector": "<how attackers exploit this>",
-      "potentialImpact": "<technical consequences>",
-      "businessImpact": "<business and regulatory consequences>",
-      "remediationPriority": "<immediate|high|medium|low>",
-      "remediationSteps": ["<step 1>", "<step 2>"],
-      "estimatedRemediationTime": "<time estimate>",
-      "references": ["<reference URLs>"]
-    }
-  ],
-  "recommendations": [
-    "<recommendation 1>",
-    "<recommendation 2>"
-  ]
-}
-
-**Analysis Guidelines:**
-- Score risks based on real-world exploitability, not theoretical possibilities
-- Consider attack chains where multiple misconfigurations combine
-- Factor in business context: regulated data, customer impact, operational criticality
-- Provide specific, actionable remediation steps
-- Include real attack scenarios from threat intelligence`;
-  }
-
-  /**
-   * Build comprehensive analysis prompt for the LLM
-   */
-  private buildAnalysisPrompt(vm: VMInstance, misconfigurations: Misconfiguration[]): string {
-    return `## Security Analysis Request
-
-Analyze the following VM configuration and misconfigurations to generate a comprehensive security risk assessment.
-
-### Virtual Machine Details
-
-**Identity:**
-- Name: ${vm.name}
-- ID: ${vm.id}
-- Provider: ${vm.provider.toUpperCase()}
-- Region: ${vm.region}
-- Availability Zone: ${vm.availabilityZone}
-- Instance Type: ${vm.instanceType}
-- State: ${vm.state}
-
-**Network Configuration:**
-- Public IP Assigned: ${vm.networkInterfaces.some(ni => ni.publicIpAssigned) ? 'YES (Internet Accessible)' : 'NO (Internal Only)'}
-- Network Interfaces: ${vm.networkInterfaces.length}
-- Security Groups: ${vm.securityGroups.map(sg => sg.name).join(', ')}
-
-**Security Group Rules:**
-${vm.securityGroups.map(sg => `
-Group: ${sg.name} (${sg.isDefault ? 'DEFAULT' : 'Custom'})
-${sg.rules.map(r => `  - ${r.direction}: ${r.protocol}:${r.fromPort}-${r.toPort} from ${r.source}`).join('\n')}
-`).join('\n')}
-
-**Storage Configuration:**
-- Total Disks: ${vm.disks.length}
-- Boot Disk Encrypted: ${vm.disks.find(d => d.boot)?.encrypted ? 'YES' : 'NO'}
-- All Disks Encrypted: ${vm.disks.every(d => d.encrypted) ? 'YES' : 'NO'}
-- Disk Details: ${vm.disks.map(d => `${d.name}(${d.encrypted ? 'encrypted' : 'unencrypted'})`).join(', ')}
-
-**Identity & Access:**
-- IAM Role: ${vm.iamRole ? vm.iamRole.name : 'NONE'}
-- IAM Policies: ${vm.iamRole?.policies.map(p => p.name).join(', ') || 'N/A'}
-- IMDSv2 Enabled: ${vm.metadataServiceV2 ? 'YES (Secure)' : 'NO (SSRF Vulnerable)'}
-- Sensitive Data in User Data: ${vm.userDataSensitiveData ? 'DETECTED (CRITICAL)' : 'None detected'}
-
-**Monitoring & Logging:**
-- Detailed Monitoring: ${vm.monitoring.detailedMonitoring ? 'Enabled' : 'Disabled'}
-- CloudTrail/Activity Logs: ${vm.monitoring.cloudTrailEnabled ? 'Enabled' : 'Disabled'}
-- VPC Flow Logs: ${vm.monitoring.vpcFlowLogsEnabled ? 'Enabled' : 'Disabled'}
-- Security Monitoring: ${vm.monitoring.guardDutyEnabled ? 'Enabled' : 'Disabled'}
-
-**Backup & Recovery:**
-- Backup Configured: ${vm.backup.enabled ? 'YES' : 'NO'}
-- Retention: ${vm.backup.enabled ? `${vm.backup.retentionDays} days` : 'N/A'}
-- Cross-Region: ${vm.backup.crossRegionCopy ? 'YES' : 'NO'}
-
-**Security Features:**
-- Secure Boot: ${vm.secureBoot ? 'Enabled' : 'Disabled'}
-- vTPM: ${vm.vtpmEnabled ? 'Enabled' : 'Disabled'}
-
-**Tags:**
-${Object.entries(vm.tags).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- No tags applied'}
-
-### Detected Misconfigurations (${misconfigurations.length} total)
-
-${misconfigurations.map((m, i) => `
-#### ${i + 1}. ${m.title} [${m.severity.toUpperCase()}]
-- **Rule ID:** ${m.ruleId}
-- **Category:** ${m.category}
-- **Affected Resource:** ${m.affectedResource}
-- **Current Configuration:** ${m.currentValue}
-- **Secure Configuration:** ${m.recommendedValue}
-- **Issue:** ${m.description}
-- **CIS Benchmark:** ${m.cisBenchmark || 'N/A'}
-- **NIST Control:** ${m.nistControl || 'N/A'}
-- **MITRE ATT&CK:** ${m.mitreAttackTactics?.join(', ') || 'N/A'}
-`).join('\n')}
-
-### Analysis Instructions
-
-1. **Analyze Attack Surface:** Consider how these misconfigurations could be chained by attackers
-2. **Generate Top 5 Risks:** Prioritize by real-world exploitability and business impact
-3. **Calculate Scores:** 
-   - overallRiskScore: 0-100 (0=critical risk, 100=secure)
-   - complianceScore: percentage of security best practices met
-4. **Risk Level:** critical/high/medium/low/secure based on overallRiskScore
-5. **Recommendations:** Specific, prioritized, actionable items
-
-Respond with ONLY the JSON object, no other text.`;
-  }
-
-  /**
-   * Parse LLM response into structured analysis
-   */
-  private parseLLMResponse(
-    response: string,
     misconfigurations: Misconfiguration[]
   ): {
     overallRiskScore: number;
@@ -297,106 +80,323 @@ Respond with ONLY the JSON object, no other text.`;
     complianceScore: number;
     recommendations: string[];
   } {
-    try {
-      // Extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in LLM response');
-      }
+    // Calculate scores based on misconfigurations
+    const criticalCount = misconfigurations.filter(m => m.severity === 'critical').length;
+    const highCount = misconfigurations.filter(m => m.severity === 'high').length;
+    const mediumCount = misconfigurations.filter(m => m.severity === 'medium').length;
+    const lowCount = misconfigurations.filter(m => m.severity === 'low').length;
 
-      const parsed = JSON.parse(jsonMatch[0]);
+    // Calculate overall risk score (100 = secure, 0 = critical)
+    let riskScore = 100;
+    riskScore -= criticalCount * 25;
+    riskScore -= highCount * 15;
+    riskScore -= mediumCount * 8;
+    riskScore -= lowCount * 3;
+    riskScore = Math.max(0, Math.min(100, riskScore));
 
-      // Validate and sanitize the response
-      const validCategories: RiskCategory[] = [
-        'network_security', 'identity_access', 'data_protection',
-        'monitoring_logging', 'compliance', 'compute_security'
-      ];
-      const validSeverities: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];
-      const validLikelihoods = ['very_high', 'high', 'medium', 'low', 'very_low'];
-      const validImpacts = ['catastrophic', 'critical', 'major', 'moderate', 'minor'];
-      const validPriorities = ['immediate', 'high', 'medium', 'low'];
-      const validRiskLevels = ['critical', 'high', 'medium', 'low', 'secure'] as const;
+    // Determine risk level
+    let riskLevel: 'critical' | 'high' | 'medium' | 'low' | 'secure';
+    if (riskScore < 25) riskLevel = 'critical';
+    else if (riskScore < 50) riskLevel = 'high';
+    else if (riskScore < 70) riskLevel = 'medium';
+    else if (riskScore < 90) riskLevel = 'low';
+    else riskLevel = 'secure';
 
-      const top5Risks: CyberRisk[] = (parsed.top5Risks || []).slice(0, 5).map((risk: Record<string, unknown>, index: number): CyberRisk => ({
-        rank: index + 1,
-        id: typeof risk.id === 'string' ? risk.id : `RISK-${String(index + 1).padStart(3, '0')}`,
-        title: typeof risk.title === 'string' ? risk.title : 'Security Risk',
-        category: validCategories.includes(risk.category as RiskCategory) 
-          ? risk.category as RiskCategory 
-          : 'compute_security',
-        severity: validSeverities.includes(risk.severity as Severity) 
-          ? risk.severity as Severity 
-          : 'medium',
-        cvssScore: typeof risk.cvssScore === 'number' 
-          ? Math.min(10, Math.max(0, risk.cvssScore)) 
-          : 5.0,
-        likelihood: validLikelihoods.includes(risk.likelihood as string) 
-          ? risk.likelihood as CyberRisk['likelihood'] 
-          : 'medium',
-        impact: validImpacts.includes(risk.impact as string) 
-          ? risk.impact as CyberRisk['impact'] 
-          : 'moderate',
-        description: typeof risk.description === 'string' 
-          ? risk.description 
-          : 'Risk identified by AI analysis',
-        affectedMisconfigurations: Array.isArray(risk.affectedMisconfigurations) 
-          ? risk.affectedMisconfigurations as string[] 
-          : [],
-        attackVector: typeof risk.attackVector === 'string' 
-          ? risk.attackVector 
-          : 'Attack vector analysis pending',
-        potentialImpact: typeof risk.potentialImpact === 'string' 
-          ? risk.potentialImpact 
-          : 'Impact assessment pending',
-        businessImpact: typeof risk.businessImpact === 'string' 
-          ? risk.businessImpact 
-          : 'Business impact assessment pending',
-        remediationPriority: validPriorities.includes(risk.remediationPriority as string) 
-          ? risk.remediationPriority as CyberRisk['remediationPriority'] 
-          : 'medium',
-        remediationSteps: Array.isArray(risk.remediationSteps) 
-          ? risk.remediationSteps as string[] 
-          : ['Review and address the identified issue'],
-        estimatedRemediationTime: typeof risk.estimatedRemediationTime === 'string' 
-          ? risk.estimatedRemediationTime 
-          : 'Unknown',
-        references: Array.isArray(risk.references) 
-          ? risk.references as string[] 
-          : []
-      }));
+    // Calculate compliance score
+    const complianceScore = Math.max(0, 100 - (criticalCount * 20 + highCount * 12 + mediumCount * 6 + lowCount * 2));
 
-      return {
-        overallRiskScore: typeof parsed.overallRiskScore === 'number' 
-          ? Math.min(100, Math.max(0, parsed.overallRiskScore)) 
-          : 50,
-        riskLevel: validRiskLevels.includes(parsed.riskLevel as typeof validRiskLevels[number])
-          ? parsed.riskLevel as typeof validRiskLevels[number]
-          : 'medium',
-        top5Risks,
-        complianceScore: typeof parsed.complianceScore === 'number' 
-          ? Math.min(100, Math.max(0, parsed.complianceScore)) 
-          : 50,
-        recommendations: Array.isArray(parsed.recommendations) 
-          ? parsed.recommendations.filter((r): r is string => typeof r === 'string')
-          : ['Review security posture and implement recommended changes']
-      };
-    } catch (error) {
-      console.error('[RiskAnalysis] Failed to parse LLM response:', error);
-      console.error('[RiskAnalysis] Raw response:', response);
-      throw new Error('Failed to parse LLM response. Please try again.');
-    }
+    // Generate Top 5 Risks
+    const top5Risks = this.generateTop5RisksFromMisconfigs(vm, misconfigurations);
+
+    // Generate recommendations
+    const recommendations = this.generateRecommendations(misconfigurations);
+
+    return {
+      overallRiskScore: riskScore,
+      riskLevel,
+      top5Risks,
+      complianceScore,
+      recommendations
+    };
   }
 
   /**
-   * Check if LLM service is available
+   * Generate Top 5 risks from misconfigurations
+   */
+  private generateTop5RisksFromMisconfigs(
+    vm: VMInstance,
+    misconfigurations: Misconfiguration[]
+  ): CyberRisk[] {
+    // Sort by severity and take top issues
+    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+    const sorted = [...misconfigurations].sort(
+      (a, b) => severityOrder[a.severity] - severityOrder[b.severity]
+    );
+
+    const risks: CyberRisk[] = [];
+    const riskTemplates = this.getRiskTemplates(vm);
+
+    for (let i = 0; i < Math.min(5, sorted.length); i++) {
+      const misco = sorted[i];
+      const template = riskTemplates[misco.ruleId] || riskTemplates['default'];
+
+      risks.push({
+        rank: i + 1,
+        id: `RISK-${String(i + 1).padStart(3, '0')}`,
+        title: template.title.replace('{resource}', misco.affectedResource),
+        category: misco.category as RiskCategory,
+        severity: misco.severity,
+        cvssScore: this.calculateCVSS(misco.severity),
+        likelihood: this.getLikelihood(misco.severity),
+        impact: this.getImpact(misco.severity),
+        description: `${misco.description} This vulnerability affects ${misco.affectedResource} on VM ${vm.name}.`,
+        affectedMisconfigurations: [misco.ruleId],
+        attackVector: template.attackVector,
+        potentialImpact: template.potentialImpact,
+        businessImpact: template.businessImpact,
+        remediationPriority: this.getPriority(misco.severity),
+        remediationSteps: [misco.remediation, ...template.additionalSteps],
+        estimatedRemediationTime: this.getRemediationTime(misco.severity),
+        references: misco.references.length > 0 ? misco.references : ['https://www.cisecurity.org/benchmarks']
+      });
+    }
+
+    return risks;
+  }
+
+  /**
+   * Calculate CVSS score based on severity
+   */
+  private calculateCVSS(severity: Severity): number {
+    const scores = { critical: 9.5, high: 8.0, medium: 5.5, low: 3.0, info: 0.0 };
+    return scores[severity] || 5.0;
+  }
+
+  /**
+   * Get likelihood based on severity
+   */
+  private getLikelihood(severity: Severity): 'very_high' | 'high' | 'medium' | 'low' | 'very_low' {
+    const likelihoods: Record<Severity, 'very_high' | 'high' | 'medium' | 'low' | 'very_low'> = { 
+      critical: 'very_high', 
+      high: 'high', 
+      medium: 'medium', 
+      low: 'low', 
+      info: 'very_low' 
+    };
+    return likelihoods[severity] || 'medium';
+  }
+
+  /**
+   * Get impact based on severity
+   */
+  private getImpact(severity: Severity): 'catastrophic' | 'critical' | 'major' | 'moderate' | 'minor' {
+    const impacts: Record<Severity, 'catastrophic' | 'critical' | 'major' | 'moderate' | 'minor'> = { 
+      critical: 'catastrophic', 
+      high: 'critical', 
+      medium: 'major', 
+      low: 'moderate', 
+      info: 'minor' 
+    };
+    return impacts[severity] || 'moderate';
+  }
+
+  /**
+   * Get priority based on severity
+   */
+  private getPriority(severity: Severity): 'immediate' | 'high' | 'medium' | 'low' {
+    const priorities: Record<Severity, 'immediate' | 'high' | 'medium' | 'low'> = { 
+      critical: 'immediate', 
+      high: 'high', 
+      medium: 'medium', 
+      low: 'low', 
+      info: 'low' 
+    };
+    return priorities[severity] || 'medium';
+  }
+
+  /**
+   * Get remediation time estimate
+   */
+  private getRemediationTime(severity: Severity): string {
+    const times: Record<Severity, string> = { 
+      critical: '1-2 hours', 
+      high: '2-4 hours', 
+      medium: '4-8 hours', 
+      low: '1-2 days', 
+      info: '1 week' 
+    };
+    return times[severity] || '4-8 hours';
+  }
+
+  /**
+   * Generate recommendations based on misconfigurations
+   */
+  private generateRecommendations(misconfigurations: Misconfiguration[]): string[] {
+    const recommendations: string[] = [];
+    
+    const categories = new Set(misconfigurations.map(m => m.category));
+    
+    if (categories.has('network_security')) {
+      recommendations.push('Review and restrict security group rules to follow least privilege principle');
+      recommendations.push('Implement network segmentation and use private subnets for sensitive workloads');
+    }
+    
+    if (categories.has('identity_access')) {
+      recommendations.push('Implement IMDSv2 to prevent SSRF attacks and credential theft');
+      recommendations.push('Apply IAM roles with least privilege permissions');
+    }
+    
+    if (categories.has('data_protection')) {
+      recommendations.push('Enable encryption at rest for all storage volumes');
+      recommendations.push('Remove sensitive data from instance user data scripts');
+    }
+    
+    if (categories.has('monitoring_logging')) {
+      recommendations.push('Enable CloudTrail/Activity logs for audit compliance');
+      recommendations.push('Enable VPC Flow Logs for network traffic analysis');
+    }
+    
+    if (categories.has('compute_security')) {
+      recommendations.push('Configure automated backups with appropriate retention policies');
+      recommendations.push('Apply required tags for resource management and cost allocation');
+    }
+
+    recommendations.push('Establish a regular security review process to maintain compliance');
+    
+    return recommendations.slice(0, 8);
+  }
+
+  /**
+   * Risk templates for detailed analysis
+   */
+  private getRiskTemplates(vm: VMInstance): Record<string, {
+    title: string;
+    attackVector: string;
+    potentialImpact: string;
+    businessImpact: string;
+    additionalSteps: string[];
+  }> {
+    return {
+      'NS-001': {
+        title: 'Critical: Open Security Group Exposes {resource} to Internet',
+        attackVector: 'Attackers can scan and directly access the VM from any IP address on the internet, enabling reconnaissance, exploitation attempts, and potential unauthorized access.',
+        potentialImpact: 'Direct server compromise, data exfiltration, malware installation, and potential lateral movement to other infrastructure components.',
+        businessImpact: 'Data breach, regulatory non-compliance (GDPR, HIPAA), service disruption, and potential ransomware attack. Estimated cost: $100K-$1M+.',
+        additionalSteps: ['Restrict source IPs to known ranges', 'Implement VPN or bastion host access', 'Enable AWS GuardDuty for threat detection']
+      },
+      'NS-002': {
+        title: 'Critical: SSH Port Open to Internet on {resource}',
+        attackVector: 'Brute force attacks, credential stuffing, and exploitation of SSH vulnerabilities from any internet location.',
+        potentialImpact: 'Unauthorized server access, complete system compromise, credential theft, and potential supply chain attack vector.',
+        businessImpact: 'Complete infrastructure compromise, data breach, compliance violations, and potential ransomware deployment.',
+        additionalSteps: ['Implement SSH key-based authentication only', 'Use AWS Systems Manager Session Manager', 'Enable fail2ban or similar intrusion prevention']
+      },
+      'NS-003': {
+        title: 'Critical: RDP Port Exposes {resource} to Remote Attacks',
+        attackVector: 'BlueKeep and other RDP exploits, brute force attacks, and pass-the-hash attacks from internet-connected attackers.',
+        potentialImpact: 'Complete system takeover, credential harvesting, malware deployment, and network propagation.',
+        businessImpact: 'Ransomware attack vector, data breach, operational disruption, and potential regulatory fines.',
+        additionalSteps: ['Implement RD Gateway with MFA', 'Use VPN for RDP access', 'Enable Network Level Authentication']
+      },
+      'IA-001': {
+        title: 'High: Missing IAM Role on {resource}',
+        attackVector: 'Without proper IAM roles, applications may use hardcoded credentials or overly permissive policies.',
+        potentialImpact: 'Credential exposure in code, unauthorized API access, and difficulty in access auditing.',
+        businessImpact: 'Security blind spots, compliance gaps, potential credential leaks, and increased attack surface.',
+        additionalSteps: ['Create purpose-specific IAM role', 'Implement instance profile', 'Audit application credential usage']
+      },
+      'IA-003': {
+        title: 'High: Overly Permissive IAM Role on {resource}',
+        attackVector: 'Compromised instance can leverage excessive permissions to access, modify, or delete resources.',
+        potentialImpact: 'Lateral movement, data exfiltration, infrastructure destruction, and privilege escalation.',
+        businessImpact: 'Breach of multiple systems, data loss, compliance violations, and extended incident response.',
+        additionalSteps: ['Review and restrict IAM policy', 'Implement permission boundaries', 'Enable CloudTrail for monitoring']
+      },
+      'IA-004': {
+        title: 'Critical: IMDSv1 Enabled - SSRF Vulnerability on {resource}',
+        attackVector: 'Server-Side Request Forgery (SSRF) attacks can retrieve instance metadata including temporary IAM credentials.',
+        potentialImpact: 'Credential theft, account takeover, unauthorized access to all resources the role can access.',
+        businessImpact: 'Full account compromise, data breach across multiple services, major incident response required.',
+        additionalSteps: ['Enforce IMDSv2 with hop limit of 1', 'Update applications to use IMDSv2', 'Audit for SSRF vulnerabilities']
+      },
+      'DP-001': {
+        title: 'High: Unencrypted Boot Disk on {resource}',
+        attackVector: 'Physical access to storage, snapshot exposure, or insider threat can access unencrypted data.',
+        potentialImpact: 'Data exposure, credential harvesting from disk, compliance violations.',
+        businessImpact: 'Data breach, regulatory fines (GDPR Article 32), loss of customer trust.',
+        additionalSteps: ['Enable default EBS encryption', 'Migrate to encrypted volumes', 'Implement key rotation policy']
+      },
+      'DP-002': {
+        title: 'High: Unencrypted Data Disks on {resource}',
+        attackVector: 'Data at rest can be accessed through volume snapshots, physical access, or backup exposure.',
+        potentialImpact: 'Sensitive data exposure, database credential theft, compliance violations.',
+        businessImpact: 'Data breach notification requirements, regulatory fines, reputation damage.',
+        additionalSteps: ['Enable encryption for all volumes', 'Use customer-managed KMS keys', 'Audit encryption status regularly']
+      },
+      'DP-003': {
+        title: 'Critical: Sensitive Data Exposed in User Data on {resource}',
+        attackVector: 'User data is accessible via IMDSv1 SSRF, instance console, or through snapshot sharing.',
+        potentialImpact: 'Direct credential theft, database password exposure, API key compromise.',
+        businessImpact: 'Immediate credential rotation required, potential breach already occurred, compliance violation.',
+        additionalSteps: ['Move secrets to AWS Secrets Manager', 'Rotate all exposed credentials immediately', 'Audit for unauthorized access']
+      },
+      'ML-001': {
+        title: 'Medium: Detailed Monitoring Disabled on {resource}',
+        attackVector: 'Insufficient logging limits detection of security incidents and attack patterns.',
+        potentialImpact: 'Delayed threat detection, incomplete incident forensics, compliance gaps.',
+        businessImpact: 'Extended breach dwell time, regulatory audit failures, increased insurance premiums.',
+        additionalSteps: ['Enable detailed monitoring', 'Configure CloudWatch alarms', 'Integrate with SIEM solution']
+      },
+      'ML-002': {
+        title: 'Medium: VPC Flow Logs Disabled on {resource}',
+        attackVector: 'Network-level attacks go undetected without flow log analysis.',
+        potentialImpact: 'Undetected reconnaissance, data exfiltration, and lateral movement.',
+        businessImpact: 'Compliance audit failures, extended incident response time, regulatory fines.',
+        additionalSteps: ['Enable VPC Flow Logs', 'Configure log retention policy', 'Analyze for anomalies']
+      },
+      'ML-003': {
+        title: 'Medium: CloudTrail Disabled - No Audit Trail for {resource}',
+        attackVector: 'Attacker actions are not logged, enabling persistent access and data theft without detection.',
+        potentialImpact: 'No forensic evidence, compliance violations, inability to determine breach scope.',
+        businessImpact: 'Regulatory penalties, failed audits, inability to meet legal discovery requirements.',
+        additionalSteps: ['Enable CloudTrail for all regions', 'Configure log file validation', 'Implement log encryption']
+      },
+      'CS-001': {
+        title: 'Medium: No Backup Configured for {resource}',
+        attackVector: 'Ransomware or accidental deletion results in permanent data loss.',
+        potentialImpact: 'Complete data loss, extended downtime, potential business closure.',
+        businessImpact: 'Revenue loss, customer churn, regulatory fines, potential business failure.',
+        additionalSteps: ['Configure automated backups', 'Test backup restoration', 'Implement cross-region replication']
+      },
+      'CS-003': {
+        title: 'Low: Missing Required Tags on {resource}',
+        attackVector: 'Lack of ownership and environment tags complicates security operations.',
+        potentialImpact: 'Delayed incident response, cost allocation issues, compliance gaps.',
+        businessImpact: 'Audit failures, inefficient resource management, security blind spots.',
+        additionalSteps: ['Implement tag policies', 'Automate tag enforcement', 'Regular compliance audits']
+      },
+      'CS-004': {
+        title: 'High: Public IP Assigned to {resource}',
+        attackVector: 'Direct internet exposure increases attack surface for reconnaissance and exploitation.',
+        potentialImpact: 'Increased vulnerability to network attacks, scanning, and direct targeting.',
+        businessImpact: 'Higher risk profile, increased security costs, potential for targeted attacks.',
+        additionalSteps: ['Use NAT Gateway for outbound access', 'Place in private subnet', 'Implement WAF if public access required']
+      },
+      'default': {
+        title: 'Security Issue Detected: {resource}',
+        attackVector: 'This misconfiguration could be exploited by attackers to compromise system security.',
+        potentialImpact: 'Potential unauthorized access, data exposure, or service disruption.',
+        businessImpact: 'Security posture degradation, potential compliance violations, increased risk.',
+        additionalSteps: ['Review and remediate the identified issue', 'Implement security best practices', 'Monitor for related issues']
+      }
+    };
+  }
+
+  /**
+   * Check if service is available (always true in demo mode)
    */
   async isServerAvailable(): Promise<boolean> {
-    try {
-      await this.initialize();
-      return true;
-    } catch {
-      return false;
-    }
+    return true;
   }
 
   /**
