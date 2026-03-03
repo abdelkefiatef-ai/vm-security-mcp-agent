@@ -4,7 +4,6 @@
  * No local installation required - uses cloud-based Llama
  */
 
-import ZAI from 'z-ai-web-dev-sdk';
 import {
   VMInstance,
   Misconfiguration,
@@ -18,9 +17,12 @@ import {
 // Pure LLM Risk Analysis Engine (Cloud-Based)
 // ============================================================================
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ZAIClient = any;
+
 export class RiskAnalysisEngine {
   private modelName: string;
-  private zai: Awaited<ReturnType<typeof ZAI.create>> | null = null;
+  private zai: ZAIClient = null;
 
   constructor(modelName: string = 'llama-3.3-70b') {
     this.modelName = modelName;
@@ -31,7 +33,13 @@ export class RiskAnalysisEngine {
    */
   private async initialize(): Promise<void> {
     if (!this.zai) {
-      this.zai = await ZAI.create();
+      try {
+        const ZAI = (await import('z-ai-web-dev-sdk')).default;
+        this.zai = await ZAI.create();
+      } catch (error) {
+        console.error('[RiskAnalysis] Failed to initialize LLM:', error);
+        throw new Error(`LLM initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   }
 

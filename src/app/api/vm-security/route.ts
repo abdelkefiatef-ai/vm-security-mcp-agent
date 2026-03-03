@@ -358,15 +358,23 @@ async function handleGenerateReport(params: { vmId: string; model?: string }) {
     );
   }
   
-  const engine = getRiskEngine();
-  engine.setModel(model);
-  const misconfigurations = scanVMForMisconfigurations(vm);
-  const report = await engine.generateSecurityReport(vm, misconfigurations, getRuleCount());
-  
-  return NextResponse.json({
-    success: true,
-    report,
-  });
+  try {
+    const engine = getRiskEngine();
+    engine.setModel(model);
+    const misconfigurations = scanVMForMisconfigurations(vm);
+    const report = await engine.generateSecurityReport(vm, misconfigurations, getRuleCount());
+    
+    return NextResponse.json({
+      success: true,
+      report,
+    });
+  } catch (error) {
+    console.error('Report generation error:', error);
+    return NextResponse.json(
+      { error: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { status: 500 }
+    );
+  }
 }
 
 async function handleBatchAnalyze(params: { vmIds: string[]; model?: string }) {
