@@ -32,3 +32,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# deploy folders
+/deploy/
+/download/
+*.zip
+
+# cloudflared
+cloudflared

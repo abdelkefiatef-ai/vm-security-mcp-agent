@@ -1,7 +1,9 @@
 /**
  * API Route: VM Security Analysis
  * Provides REST API endpoints for the MCP VM Security Agent
- * Uses Cloud-based LLM - No local installation required
+ * Uses Groq's FREE Llama API - No local installation required
+ * Requires GROQ_API_KEY environment variable
+ * Version: 2.0 - Groq Integration
  */
 
 import { NextRequest, NextResponse } from 'next/server';
