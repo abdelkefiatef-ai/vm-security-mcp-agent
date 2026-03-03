@@ -245,30 +245,34 @@ async function handleGetRules() {
 }
 
 async function handleLLMStatus() {
-  try {
-    const engine = getRiskEngine();
-    const isAvailable = await engine.isServerAvailable();
-    
-    return NextResponse.json({
-      success: true,
-      llmServer: 'Cloud LLM',
-      status: isAvailable ? 'running' : 'available',
-      endpoint: 'Cloud API (No local installation required)',
-      availableModels: ['llama-3.3-70b', 'llama-3.2-3b', 'mistral-large'],
-      currentModel: 'llama-3.3-70b',
-      message: 'Cloud-based LLM is ready for AI-powered risk analysis. No local installation required!',
-    });
-  } catch (error) {
-    console.error('LLM Status Error:', error);
-    return NextResponse.json({
-      success: true,
-      llmServer: 'Cloud LLM',
-      status: 'available',
-      endpoint: 'Cloud API',
-      availableModels: ['llama-3.3-70b'],
-      message: 'Cloud-based LLM ready - no setup required!',
-    });
-  }
+  const apiKey = process.env.GROQ_API_KEY;
+  const isConfigured = !!apiKey;
+  
+  return NextResponse.json({
+    success: true,
+    llmServer: 'Groq (FREE Llama API)',
+    status: isConfigured ? 'configured' : 'needs_api_key',
+    endpoint: 'https://api.groq.com (FREE Tier)',
+    availableModels: [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-70b-versatile', 
+      'llama-3.1-8b-instant',
+      'llama-3.2-90b-vision-preview',
+      'llama-3.2-3b-preview'
+    ],
+    currentModel: 'llama-3.3-70b-versatile',
+    isConfigured: isConfigured,
+    message: isConfigured 
+      ? '✅ Groq API is configured. LLM-based risk analysis is ready!'
+      : '⚠️ GROQ_API_KEY not set. Get your FREE API key at https://console.groq.com/',
+    instructions: !isConfigured ? {
+      step1: 'Go to https://console.groq.com/',
+      step2: 'Sign up for a FREE account',
+      step3: 'Create an API key',
+      step4: 'Add GROQ_API_KEY to your environment variables',
+      note: 'Groq offers FREE access to Llama models - completely open source!'
+    } : undefined,
+  });
 }
 
 async function handleSummary() {

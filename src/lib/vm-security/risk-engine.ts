@@ -1,10 +1,9 @@
 /**
  * Pure LLM-Based Risk Analysis Engine
- * Fully autonomous AI-powered VM security analysis using Cloud LLM
- * No local installation required - uses cloud-based Llama
+ * Uses Groq's FREE Llama API - Completely free, open-source LLM
+ * No hardcoded rules - All analysis is AI-generated
  */
 
-import ZAI from 'z-ai-web-dev-sdk';
 import {
   VMInstance,
   Misconfiguration,
@@ -15,24 +14,75 @@ import {
 } from './types';
 
 // ============================================================================
-// Pure LLM Risk Analysis Engine (Cloud-Based)
+// Groq API Client (FREE Llama Models)
+// ============================================================================
+
+interface GroqMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface GroqResponse {
+  id: string;
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
+
+/**
+ * Call Groq's FREE API for Llama models
+ */
+async function callGroqAPI(
+  messages: GroqMessage[],
+  model: string = 'llama-3.3-70b-versatile'
+): Promise<string> {
+  const apiKey = process.env.GROQ_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('GROQ_API_KEY environment variable is not set. Get your FREE API key at https://console.groq.com/');
+  }
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: messages,
+      temperature: 0.3,
+      max_tokens: 4096,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Groq API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json() as GroqResponse;
+  return data.choices[0]?.message?.content || '';
+}
+
+// ============================================================================
+// Pure LLM Risk Analysis Engine (Groq - FREE Llama)
 // ============================================================================
 
 export class RiskAnalysisEngine {
   private modelName: string;
-  private zai: Awaited<ReturnType<typeof ZAI.create>> | null = null;
+  private availableModels = [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-70b-versatile',
+    'llama-3.1-8b-instant',
+    'llama-3.2-90b-vision-preview',
+    'llama-3.2-3b-preview',
+  ];
 
-  constructor(modelName: string = 'llama-3.3-70b') {
+  constructor(modelName: string = 'llama-3.3-70b-versatile') {
     this.modelName = modelName;
-  }
-
-  /**
-   * Initialize the LLM client
-   */
-  private async initialize(): Promise<void> {
-    if (!this.zai) {
-      this.zai = await ZAI.create();
-    }
   }
 
   /**
@@ -45,8 +95,6 @@ export class RiskAnalysisEngine {
     rulesApplied: number = 18
   ): Promise<VMSecurityReport> {
     const startTime = Date.now();
-    
-    await this.initialize();
 
     // Use LLM for comprehensive risk analysis
     const analysis = await this.performLLMAnalysis(vm, misconfigurations);
@@ -82,13 +130,12 @@ export class RiskAnalysisEngine {
       return [];
     }
 
-    await this.initialize();
     const analysis = await this.performLLMAnalysis(vm, misconfigurations);
     return analysis.top5Risks;
   }
 
   /**
-   * Core LLM Analysis - All security analysis is performed by the Cloud LLM
+   * Core LLM Analysis - All security analysis is performed by Llama LLM
    */
   private async performLLMAnalysis(
     vm: VMInstance,
@@ -104,22 +151,14 @@ export class RiskAnalysisEngine {
     const userPrompt = this.buildAnalysisPrompt(vm, misconfigurations);
 
     try {
-      const completion = await this.zai!.chat.completions.create({
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: userPrompt
-          }
+      const response = await callGroqAPI(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
         ],
-        temperature: 0.3,
-        max_tokens: 4096
-      });
+        this.modelName
+      );
 
-      const response = completion.choices[0]?.message?.content || '';
       return this.parseLLMResponse(response, misconfigurations);
     } catch (error) {
       console.error('[RiskAnalysis] LLM analysis error:', error);
@@ -128,10 +167,10 @@ export class RiskAnalysisEngine {
   }
 
   /**
-   * Security Analyst System Prompt
+   * Security Analyst System Prompt - Guides the LLM to analyze security risks
    */
   private getSecurityAnalystPrompt(): string {
-    return `You are an elite cybersecurity analyst AI with deep expertise in:
+    return `You are an elite cybersecurity analyst AI powered by Llama, with deep expertise in:
 
 **Cloud Security Domains:**
 - AWS, Azure, GCP infrastructure security
@@ -384,8 +423,8 @@ Respond with ONLY the JSON object, no other text.`;
    */
   async isServerAvailable(): Promise<boolean> {
     try {
-      await this.initialize();
-      return true;
+      const apiKey = process.env.GROQ_API_KEY;
+      return !!apiKey;
     } catch {
       return false;
     }
@@ -395,14 +434,16 @@ Respond with ONLY the JSON object, no other text.`;
    * Get available models
    */
   async getAvailableModels(): Promise<string[]> {
-    return ['llama-3.3-70b', 'llama-3.2-3b', 'mistral-large'];
+    return this.availableModels;
   }
 
   /**
    * Set the model to use
    */
   setModel(modelName: string): void {
-    this.modelName = modelName;
+    if (this.availableModels.includes(modelName)) {
+      this.modelName = modelName;
+    }
   }
 }
 

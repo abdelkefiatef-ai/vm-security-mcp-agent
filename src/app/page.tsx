@@ -126,6 +126,14 @@ interface LLMStatus {
   status: string;
   availableModels: string[];
   message: string;
+  isConfigured?: boolean;
+  instructions?: {
+    step1: string;
+    step2: string;
+    step3: string;
+    step4: string;
+    note: string;
+  };
 }
 
 // ============================================================================
@@ -141,7 +149,7 @@ export default function VMSecurityAnalyzer() {
   const [llmStatus, setLLMStatus] = useState<LLMStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedModel, setSelectedModel] = useState('llama-3.3-70b');
+  const [selectedModel, setSelectedModel] = useState('llama-3.3-70b-versatile');
   const [error, setError] = useState<string | null>(null);
 
   // API Functions
@@ -270,22 +278,36 @@ export default function VMSecurityAnalyzer() {
             <div className="flex items-center gap-4">
               {llmStatus && (
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-slate-300">
-                    Cloud LLM Ready
-                  </span>
+                  {llmStatus.isConfigured ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span className="text-sm text-slate-300">
+                        Groq API Connected
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 text-red-500" />
+                      <span className="text-sm text-red-400">
+                        API Key Required
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
-              <Select value={selectedModel} onValueChange={setSelectedModel}>
-                <SelectTrigger className="w-36 bg-slate-800 border-slate-700">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="llama-3.3-70b">Llama 3.3 70B</SelectItem>
-                  <SelectItem value="llama-3.2-3b">Llama 3.2 3B</SelectItem>
-                  <SelectItem value="mistral-large">Mistral Large</SelectItem>
-                </SelectContent>
-              </Select>
+              {llmStatus?.isConfigured && (
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger className="w-40 bg-slate-800 border-slate-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="llama-3.3-70b-versatile">Llama 3.3 70B</SelectItem>
+                    <SelectItem value="llama-3.1-70b-versatile">Llama 3.1 70B</SelectItem>
+                    <SelectItem value="llama-3.1-8b-instant">Llama 3.1 8B</SelectItem>
+                    <SelectItem value="llama-3.2-3b-preview">Llama 3.2 3B</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
         </div>
@@ -474,11 +496,11 @@ export default function VMSecurityAnalyzer() {
                     </Card>
 
                     {/* LLM Status Card */}
-                    <Card className="bg-slate-800/50 border-slate-700 border-green-500/30">
+                    <Card className={`bg-slate-800/50 border-slate-700 ${llmStatus?.isConfigured ? 'border-green-500/30' : 'border-red-500/30'}`}>
                       <CardHeader>
                         <CardTitle className="text-white flex items-center gap-2">
                           <Brain className="h-5 w-5" />
-                          Cloud LLM Status
+                          Groq API Status (FREE Llama)
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -486,9 +508,9 @@ export default function VMSecurityAnalyzer() {
                           <>
                             <div className="grid grid-cols-3 gap-4">
                               <div className="flex items-center gap-2">
-                                <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
+                                <div className={`h-3 w-3 rounded-full ${llmStatus.isConfigured ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                                 <span className="text-slate-300">
-                                  Cloud LLM: Connected
+                                  Groq API: {llmStatus.isConfigured ? 'Configured' : 'Not Configured'}
                                 </span>
                               </div>
                               <div>
@@ -497,27 +519,48 @@ export default function VMSecurityAnalyzer() {
                               </div>
                               <div>
                                 <p className="text-xs text-slate-400">Available Models</p>
-                                <p className="font-medium text-white">{llmStatus.availableModels?.length || 3}</p>
+                                <p className="font-medium text-white">{llmStatus.availableModels?.length || 5}</p>
                               </div>
                             </div>
 
-                            <div className="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-                              <h4 className="text-green-400 font-semibold mb-2 flex items-center gap-2">
-                                <CheckCircle className="h-4 w-4" />
-                                Ready for AI-Powered Risk Analysis
-                              </h4>
-                              <p className="text-slate-300 text-sm mb-2">
-                                <strong>No local installation required!</strong> The LLM runs in the cloud.
-                              </p>
-                              <p className="text-slate-400 text-xs">
-                                Available models: {llmStatus.availableModels?.join(', ') || 'llama-3.3-70b, llama-3.2-3b, mistral-large'}
-                              </p>
-                            </div>
+                            {llmStatus.isConfigured ? (
+                              <div className="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                                <h4 className="text-green-400 font-semibold mb-2 flex items-center gap-2">
+                                  <CheckCircle className="h-4 w-4" />
+                                  Ready for AI-Powered Risk Analysis
+                                </h4>
+                                <p className="text-slate-300 text-sm mb-2">
+                                  <strong>FREE Llama models via Groq!</strong> No local installation required.
+                                </p>
+                                <p className="text-slate-400 text-xs">
+                                  Available models: {llmStatus.availableModels?.slice(0, 3).join(', ')}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                <h4 className="text-red-400 font-semibold mb-3 flex items-center gap-2">
+                                  <XCircle className="h-4 w-4" />
+                                  GROQ_API_KEY Required
+                                </h4>
+                                <p className="text-slate-300 text-sm mb-3">
+                                  Get your <strong>FREE API key</strong> from Groq to enable Llama-based risk analysis:
+                                </p>
+                                <ol className="list-decimal list-inside space-y-1 text-sm text-slate-300 mb-3">
+                                  <li>Go to <a href="https://console.groq.com/" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">https://console.groq.com/</a></li>
+                                  <li>Sign up for a FREE account</li>
+                                  <li>Create an API key</li>
+                                  <li>Add <code className="bg-slate-700 px-1 rounded">GROQ_API_KEY</code> to environment variables</li>
+                                </ol>
+                                <p className="text-green-400 text-xs">
+                                  ✓ Groq offers FREE access to Llama models - completely open source!
+                                </p>
+                              </div>
+                            )}
                           </>
                         ) : (
                           <div className="flex items-center gap-2">
                             <RefreshCw className="h-4 w-4 animate-spin text-slate-400" />
-                            <p className="text-slate-400">Connecting to Cloud LLM...</p>
+                            <p className="text-slate-400">Checking Groq API status...</p>
                           </div>
                         )}
                       </CardContent>
