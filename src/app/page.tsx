@@ -329,7 +329,9 @@ export default function VMSecurityAnalyzer() {
                           </div>
                           <div className="flex items-center gap-2">
                             {vm.hasPublicIP && (
-                              <Globe className="h-4 w-4 text-orange-400" title="Public IP" />
+                              <span title="Public IP">
+                                <Globe className="h-4 w-4 text-orange-400" />
+                              </span>
                             )}
                             <Badge variant="outline" className="text-xs">
                               {vm.provider.toUpperCase()}
